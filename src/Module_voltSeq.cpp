@@ -483,7 +483,7 @@ void voltSeq::process(const ProcessArgs &args)
 			c = s % this->numCols;			
 			stepLights[r][c] -= stepLights[r][c] / lightLambda / args.sampleRate;
 			gateLights[r][c] = stepLights[r][c];			
-			lights[PAD_LIGHTS + s].setBrightness(gateLights[r][c]);
+			lights[PAD_LIGHTS + s].value = gateLights[r][c];
 
 #ifndef NO_OSC
 			// If the value changed enough, then send it over OSC
@@ -542,7 +542,7 @@ void voltSeq::process(const ProcessArgs &args)
 		outputs[CHANNELS_OUTPUT + g].setVoltage(gate);
 		// Output lights (around output jacks for each gate/trigger):
 		gateLightsOut[g] = (gate < 0) ? -gate : gate;
-		lights[CHANNEL_LIGHTS + g].setBrightness(gate / chMode->outputVoltageMax);// currOutputValueMode->outputVoltageMax;
+		lights[CHANNEL_LIGHTS + g].value = gate / chMode->outputVoltageMax;// currOutputValueMode->outputVoltageMax;
 	}
 	return;
 } // end step()

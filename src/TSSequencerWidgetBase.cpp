@@ -318,7 +318,7 @@ void TSSequencerWidgetBase::addBaseControls(bool addGridLines)
 			// Triggers / Gates / Output:
 			addOutput(TS_createOutput<SEQ_PORT_OUT_WIDGET>(Vec(x, y), thisModule, TSSequencerModuleBase::OutputIds::CHANNELS_OUTPUT+v, /*color*/ channelColors[v]));
 			if (!isPreview)
-				thisModule->lights[TSSequencerModuleBase::LightIds::CHANNEL_LIGHTS + v].setBrightness(0);
+				thisModule->lights[TSSequencerModuleBase::LightIds::CHANNEL_LIGHTS + v].value = 0;
 			x += 36;
 			v++;
 		} // end for
@@ -389,7 +389,7 @@ void TSSequencerWidgetBase::step()
 #ifndef NO_OSC
 						this->oscConfigurationScreen->setVisible(false);
 #endif // NO_OSC
-					thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].setBrightness(0.0f);
+					thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = 0.0f;
 				}
 				else
 				{
@@ -408,7 +408,7 @@ void TSSequencerWidgetBase::step()
 	if (thisModule->oscConfigTrigger.process(thisModule->params[TSSequencerModuleBase::ParamIds::OSC_SHOW_CONF_PARAM].getValue()))
 	{
 		thisModule->oscShowConfigurationScreen = !thisModule->oscShowConfigurationScreen;
-		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].setBrightness((thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0);
+		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = (thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0);
 		this->oscConfigurationScreen->setVisible(thisModule->oscShowConfigurationScreen);
 		this->display->showDisplay = !thisModule->oscShowConfigurationScreen;
 		if (thisModule->oscShowConfigurationScreen)

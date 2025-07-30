@@ -671,7 +671,7 @@ void multiSeq::process(const ProcessArgs &args)
 		outputs[CHANNELS_OUTPUT + g].setVoltage(gate);
 		// Output lights (around output jacks for each gate/trigger):
 		gateLightsOut[g] = (gate < 0) ? -gate : gate;
-		lights[CHANNEL_LIGHTS + g].setBrightness(gate / chMode->outputVoltageMax);// currOutputValueMode->outputVoltageMax;
+		lights[CHANNEL_LIGHTS + g].value = gate / chMode->outputVoltageMax;// currOutputValueMode->outputVoltageMax;
 	}
 	return;
 } // end process()
