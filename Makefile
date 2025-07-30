@@ -18,6 +18,10 @@ include $(RACK_DIR)/arch.mk
 
 CXXFLAGS += -Ilib/oscpack -Ilib/oscpack/ip -Ilib/oscpack/osc
 
+ifdef NO_OSC
+CXXFLAGS += -DNO_OSC
+endif
+
 MACHINE = $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring mingw, $(MACHINE)))
 	SOURCES += $(wildcard lib/oscpack/ip/win32/*.cpp) 

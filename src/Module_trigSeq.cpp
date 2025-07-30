@@ -7,8 +7,12 @@
 #include "trowaSoftComponents.hpp"
 #include "trowaSoftUtilities.hpp"
 #include "Module_trigSeq.hpp"
+
+#ifndef NO_OSC
 #include "TSOSCSequencerOutputMessages.hpp"
 #include "TSOSCCommon.hpp"
+#endif //NO_OSC
+
 #include "TSSequencerWidgetBase.hpp"
 
 
@@ -141,6 +145,7 @@ void trigSeq::process(const ProcessArgs &args)
 	if (reloadMatrix)
 	{
 		reloadEditMatrix = false;		
+#ifndef NO_OSC
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -152,6 +157,8 @@ void trigSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
+
 		// Load this gate and/or pattern into our 4x4 matrix
 		this->currentStepMatrixColor = voiceColors[currentChannelEditingIx];
 		for (int s = 0; s < maxSteps; s++) 
@@ -172,6 +179,7 @@ void trigSeq::process(const ProcessArgs &args)
 				gateTriggers[s].state = TriggerSignal::LOW;
 				paramQuantities[ParamIds::CHANNEL_PARAM + s]->setValue(0.0f);// Not momentary anymore
 			}
+#ifndef NO_OSC
 			oscMutex.lock();
 			if (sendOSC && oscInitialized)
 			{
@@ -206,7 +214,9 @@ void trigSeq::process(const ProcessArgs &args)
 					<< osc::EndMessage;
 			}
 			oscMutex.unlock();
+#endif // NO_OSC
 		} // end for
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (sendOSC && oscInitialized)
 		{
@@ -227,10 +237,12 @@ void trigSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 	}
 	//-- * Read the buttons
 	else if (!valuesChanging) // Only read in if another thread isn't changing the values
 	{		
+#ifndef NO_OSC
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -238,6 +250,7 @@ void trigSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 		int numChanged = 0;
 
 		// Step buttons/pads (for this one Channel/gate) - Read Inputs
@@ -258,6 +271,7 @@ void trigSeq::process(const ProcessArgs &args)
 			gateLights[r][c] = (triggerState[currentPatternEditingIx][currentChannelEditingIx][s]) ? 1.0 - stepLights[r][c] : stepLights[r][c];
 			lights[PAD_LIGHTS + s].value = gateLights[r][c];
 
+#ifndef NO_OSC
 			oscMutex.lock();
 			// This step has changed and we are doing OSC
 			if (sendLightVal && oscInitialized)
@@ -281,7 +295,9 @@ void trigSeq::process(const ProcessArgs &args)
 				numChanged++;
 			} // end if send the value over OSC
 			oscMutex.unlock();
+#endif // NO_OSC
 		} // end loop through step buttons
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (sendOSC && oscInitialized && numChanged > 0)
 		{			
@@ -289,6 +305,7 @@ void trigSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 	} // end else (read buttons)
 	
 	// Set Outputs (16 Channels)	
@@ -312,7 +329,7 @@ void trigSeq::process(const ProcessArgs &args)
 				break;
 		}
 		float gate = (running && gOn && (triggerState[currentPatternPlayingIx][g][index])) ? trigSeq_GATE_ON_OUTPUT : trigSeq_GATE_OFF_OUTPUT;
-		outputs[CHANNELS_OUTPUT + g].value= gate;
+		outputs[CHANNELS_OUTPUT + g].setVoltage(gate);
 		// Output lights (around output jacks for each gate/trigger):		
 		lights[CHANNEL_LIGHTS + g].value = (running && triggerState[currentPatternPlayingIx][g][index]) ? 1.0 : 0;
 	}	
