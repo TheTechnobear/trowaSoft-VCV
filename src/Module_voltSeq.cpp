@@ -138,6 +138,7 @@ float voltSeq::getPlayingStepValue(int step, int pattern)
 void voltSeq::setStepValue(int step, float val, int channel, int pattern)
 {
 	int r, c;
+#ifndef NO_OSC	
 	if (channel == CURRENT_EDIT_CHANNEL_IX)
 	{
 		channel = currentChannelEditingIx;
@@ -146,6 +147,8 @@ void voltSeq::setStepValue(int step, float val, int channel, int pattern)
 	{
 		pattern = currentPatternEditingIx;
 	}
+#endif // NO_OSC
+
 	triggerState[pattern][channel][step] = val;
 	r = step / this->numCols;
 	c = step % this->numCols;
@@ -164,6 +167,7 @@ void voltSeq::setStepValue(int step, float val, int channel, int pattern)
 				gateTriggers[step].state = TriggerSignal::LOW;
 		}
 	}
+#ifndef NO_OSC
 	oscMutex.lock();
 	if (useOSC && oscInitialized)
 	{
@@ -193,6 +197,7 @@ void voltSeq::setStepValue(int step, float val, int channel, int pattern)
 		oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 
 	// Set our knobs
 	if (pattern == currentPatternEditingIx && channel == currentChannelEditingIx)
@@ -352,10 +357,15 @@ void voltSeq::process(const ProcessArgs &args)
 	char valOutputBuffer[20] = { 0 };
 	char addrBuff[TROWA_SEQ_BUFF_SIZE] = { 0 };
 	char colorAddrBuff[TROWA_SEQ_BUFF_SIZE] = { 0 }; // 2nd buffer to remove my lazy re-using of buffers (technically undefined behavior)
+#ifndef NO_OSC
 	std::string stepStringAddr = std::string(oscAddrBuffer[SeqOSCOutputMsg::EditStepString]);
+#endif // NO_OSC
+
 	if (reloadMatrix || reloadEditMatrix || valueModeChanged)
 	{
 		reloadEditMatrix = false;
+
+#ifndef NO_OSC
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -366,6 +376,8 @@ void voltSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
+
 		// Load this channel into our 4x4 matrix
 		this->currentStepMatrixColor = voiceColors[currentChannelEditingIx];
 		for (int s = 0; s < maxSteps; s++) 
@@ -377,6 +389,8 @@ void voltSeq::process(const ProcessArgs &args)
 			this->params[CHANNEL_PARAM + s].setValue(this->triggerState[currentPatternEditingIx][currentChannelEditingIx][s]);
 			//knobStepMatrix[r][c]->setKnobValue(this->triggerState[currentPatternEditingIx][currentChannelEditingIx][s]);			
 			lights[PAD_LIGHTS + s].value = gateLights[r][c];
+#ifndef NO_OSC
+
 			oscMutex.lock();
 			if (sendOSC && oscInitialized)
 			{
@@ -418,7 +432,10 @@ void voltSeq::process(const ProcessArgs &args)
 					<< osc::EndMessage;
 			}
 			oscMutex.unlock();
+#endif // NO_OSC			
 		} // end for
+
+#ifndef NO_OSC		
 		oscMutex.lock();
 		if (sendOSC && oscInitialized)
 		{
@@ -436,10 +453,13 @@ void voltSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
+
 	} // end if reload edit matrix
 	//-- * Read the buttons
 	else if (!valuesChanging) // Only read in if another thread isn't changing the values
 	{		
+#ifndef NO_OSC		
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -447,7 +467,9 @@ void voltSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 
+		// Read the step buttons
 		int numChanged = 0;
 		const float threshold = TROWA_VOLTSEQ_KNOB_CHANGED_THRESHOLD;
 		// Channel step knobs - Read Inputs
@@ -461,8 +483,10 @@ void voltSeq::process(const ProcessArgs &args)
 			c = s % this->numCols;			
 			stepLights[r][c] -= stepLights[r][c] / lightLambda / args.sampleRate;
 			gateLights[r][c] = stepLights[r][c];			
-			lights[PAD_LIGHTS + s].value = gateLights[r][c];
+			lights[PAD_LIGHTS + s].setBrightness(gateLights[r][c]);
 
+#ifndef NO_OSC
+			// If the value changed enough, then send it over OSC
 			oscMutex.lock();
 			// This step has changed and we are doing OSC
 			if (sendLightVal && oscInitialized)
@@ -491,7 +515,9 @@ void voltSeq::process(const ProcessArgs &args)
 				numChanged++;
 			} // end if send the value over OSC
 			oscMutex.unlock();
+#endif // NO_OSC
 		} // end loop through step buttons
+#ifndef NO_OSC		
 		oscMutex.lock();
 		if (sendOSC && oscInitialized && numChanged > 0)
 		{
@@ -499,6 +525,7 @@ void voltSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC		
 	} // end else (read button matrix)
 	
 	// Set Outputs (16 triggers)	
@@ -512,10 +539,10 @@ void voltSeq::process(const ProcessArgs &args)
 			k = 0;
 		ValueSequencerMode* chMode = ValueModes[k];
 		float gate = (running && gOn) ? chMode->GetOutputValue( triggerState[currentPatternPlayingIx][g][index] ) : 0.0; //***********VOLTAGE OUTPUT		
-		outputs[CHANNELS_OUTPUT + g].value= gate;
+		outputs[CHANNELS_OUTPUT + g].setVoltage(gate);
 		// Output lights (around output jacks for each gate/trigger):
 		gateLightsOut[g] = (gate < 0) ? -gate : gate;
-		lights[CHANNEL_LIGHTS + g].value = gate / chMode->outputVoltageMax;// currOutputValueMode->outputVoltageMax;
+		lights[CHANNEL_LIGHTS + g].setBrightness(gate / chMode->outputVoltageMax);// currOutputValueMode->outputVoltageMax;
 	}
 	return;
 } // end step()
@@ -538,7 +565,7 @@ voltSeqWidget::voltSeqWidget(voltSeq* seqModule) : TSSequencerWidgetBase(seqModu
 		panel->setBackground(APP->window->loadSvg(asset::plugin(pluginInstance, "res/voltSeq.svg")));
 		addChild(panel);
 	}
-	
+
 	this->TSSequencerWidgetBase::addBaseControls(false);
 	
 	// (User) Input KNOBS ==================================================	

@@ -1,14 +1,21 @@
+#ifndef NO_OSC
 #include <chrono>
 #include <string.h>
 #include <exception>
+#endif // NO_OSC
+
 #include "trowaSoft.hpp"
 //#include "dsp/digital.hpp"
 #include "trowaSoftComponents.hpp"
 #include "trowaSoftUtilities.hpp"
 #include "TSSequencerModuleBase.hpp"
+
+#ifndef NO_OSC
 #include "TSOSCSequencerListener.hpp"
 #include "TSOSCSequencerOutputMessages.hpp"
 #include "TSOSCCommunicator.hpp"
+#endif
+
 #include "TSSequencerWidgetBase.hpp"
 #include "TSParamQuantity.hpp"
 
@@ -199,18 +206,19 @@ TSSequencerModuleBase::TSSequencerModuleBase(/*in*/ int numSteps, /*in*/ int num
 	}
 	useOSC = false;
 	oscInitialized = false;
+#ifndef NO_OSC	
 	oscBuffer = NULL;
 	oscTxSocket = NULL;
 	oscListener = NULL;
 	oscRxSocket = NULL;
 	oscNamespace = OSC_DEFAULT_NS;
 	oscId = TSOSCConnector::GetId();
-
 	for (int i = 0; i < SeqOSCOutputMsg::NUM_OSC_OUTPUT_MSGS; i++)
 	{
 		for (int j = 0; j < OSC_ADDRESS_BUFFER_SIZE; j++)
 			oscAddrBuffer[i][j] = '\0';
 	}
+#endif // NO_OSC	
 
 	prevIndex = TROWA_INDEX_UNDEFINED;
 
@@ -334,6 +342,7 @@ TSSequencerModuleBase::~TSSequencerModuleBase()
 	}
 
 	// Free our buffer if we had initialized it
+#ifndef NO_OSC
 	oscMutex.lock();
 	if (oscBuffer != NULL)
 	{
@@ -341,6 +350,7 @@ TSSequencerModuleBase::~TSSequencerModuleBase()
 		oscBuffer = NULL;
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 	return;
 } // end ~TSSequencerModuleBase()
 
@@ -600,6 +610,7 @@ void TSSequencerModuleBase::randomize(int patternIx, int channelIx, bool useStru
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 void TSSequencerModuleBase::setOSCNamespace(const char* oscNs)
 {
+#ifndef NO_OSC
 	this->oscNamespace = oscNs;
 	for (int i = 0; i < SeqOSCOutputMsg::NUM_OSC_OUTPUT_MSGS; i++)
 	{
@@ -612,7 +623,7 @@ void TSSequencerModuleBase::setOSCNamespace(const char* oscNs)
 	std::strcat(oscAddrBuffer[SeqOSCOutputMsg::PlayStepLed], "%d");
 	// [touchOSC] Add some <row>/<col>
 	std::strcat(oscAddrBuffer[SeqOSCOutputMsg::EditTOSC_GridStep], "%d/%d");
-
+#endif // NO_OSC
 	return;
 } // end setOSCNameSpace()
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
@@ -626,6 +637,7 @@ void TSSequencerModuleBase::initOSC(const char* ipAddress, int outputPort, int i
 #if TROWA_DEBUG_MSGS >= TROWA_DEBUG_LVL_LOW
 	DEBUG("TSSequencerModuleBase::initOSC() - Initializing OSC");
 #endif	
+#ifndef NO_OSC
 	oscMutex.lock();
 	try
 	{
@@ -679,13 +691,15 @@ void TSSequencerModuleBase::initOSC(const char* ipAddress, int outputPort, int i
 		WARN("TSSequencerModuleBase::initOSC() - Error initializing: %s.", ex.what());
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 	return;
-} // end initOSC()
+} // end initOSC()s
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 // Clean up OSC.
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 void TSSequencerModuleBase::cleanupOSC()
 {
+#ifndef NO_OSC	
 	oscMutex.lock();
 	try
 	{
@@ -729,6 +743,7 @@ void TSSequencerModuleBase::cleanupOSC()
 #endif
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 	return;
 } // end cleanupOSC()
 
@@ -979,6 +994,7 @@ bool TSSequencerModuleBase::paste()
 void TSSequencerModuleBase::setStepValue(int step, float val, int channel, int pattern)
 {
 	int r, c;
+#ifndef NO_OSC
 	if (channel == CURRENT_EDIT_CHANNEL_IX)
 	{
 		channel = currentChannelEditingIx;
@@ -987,6 +1003,8 @@ void TSSequencerModuleBase::setStepValue(int step, float val, int channel, int p
 	{
 		pattern = currentPatternEditingIx;
 	}
+#endif // NO_OSC
+
 	triggerState[pattern][channel][step] = val;
 	r = step / this->numCols;
 	c = step % this->numCols;
@@ -1006,6 +1024,7 @@ void TSSequencerModuleBase::setStepValue(int step, float val, int channel, int p
 		}
 		paramQuantities[ParamIds::CHANNEL_PARAM + step]->setValue(val);
 	}
+#ifndef NO_OSC	
 	oscMutex.lock();
 	if (useOSC && oscInitialized)
 	{
@@ -1045,6 +1064,7 @@ void TSSequencerModuleBase::setStepValue(int step, float val, int channel, int p
 		}
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 	return;
 } // end setStepValue()
 
@@ -1168,8 +1188,8 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		// running = !running;
 	// }
 	// lights[RUNNING_LIGHT].value = running ? 1.0 : 0.0;
-
 	bool oscStarted = false; // If OSC just started to a new address this step.
+#ifndef NO_OSC
 	switch (this->oscCurrentAction)
 	{
 	case OSCAction::Disable:
@@ -1186,7 +1206,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		break;
 	}
 	this->oscCurrentAction = OSCAction::None;
-
+#endif // NO_OSC
 	// OSC is Enabled and Active light
 	lights[LightIds::OSC_ENABLED_LIGHT].value = (useOSC && oscInitialized) ? 1.0 : 0.0;
 
@@ -1448,8 +1468,13 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		case TSExternalControlMessage::MessageType::SetEditStepValue:
 			if (currentCtlMode == ExternalControllerMode::EditMode)
 			{
+#ifndef NO_OSC				
 				int p = (recvMsg.pattern == CURRENT_EDIT_PATTERN_IX) ? currentPatternEditingIx : recvMsg.pattern;
 				int c = (recvMsg.channel == CURRENT_EDIT_CHANNEL_IX) ? currentChannelEditingIx : recvMsg.channel;
+#else 
+				int p = recvMsg.pattern;
+				int c = recvMsg.channel;
+#endif // NO_OSC
 				float oldVal = this->triggerState[p][c][recvMsg.step];
 				float val = (recvMsg.messageType == TSExternalControlMessage::MessageType::ToggleEditStepValue) ? getToggleStepValue(recvMsg.step, recvMsg.val, /*channel*/ c, /*pattern*/ p) : recvMsg.val;
 				if (oldVal != val)
@@ -1470,7 +1495,11 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 			else
 			{
 				// In performance mode, this will be interupted as jump to (playing):
+#ifndef NO_OSC
 				if (recvMsg.pattern != CURRENT_EDIT_PATTERN_IX)
+#else // NO_OSC
+				if (recvMsg.pattern != -1)
+#endif // NO_OSC
 				{
 					currentPatternPlayingIx = recvMsg.pattern; // Jump to this pattern if sent
 					playPatternSetFromExternalMsg = true;
@@ -1722,7 +1751,11 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 			break;
 		case TSExternalControlMessage::MessageType::CopyEditPattern:
 		{
+#ifndef NO_OSC
 			int pat = (recvMsg.pattern == CURRENT_EDIT_PATTERN_IX) ? currentPatternEditingIx : recvMsg.pattern;
+#else // NO_OSC
+			int pat = recvMsg.pattern;
+#endif // NO_OSC			
 			if (copySourcePatternIx > -1 && copySourceChannelIx == TROWA_SEQ_COPY_CHANNELIX_ALL)
 			{
 				// Clear clipboard 
@@ -1747,8 +1780,14 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		break;
 		case TSExternalControlMessage::MessageType::CopyEditChannel:
 		{
+#ifndef NO_OSC
+			// If we are editing the current pattern, then use that, otherwise use the one
 			int pat = (recvMsg.pattern == CURRENT_EDIT_PATTERN_IX) ? currentPatternEditingIx : recvMsg.pattern;
 			int ch = (recvMsg.channel == CURRENT_EDIT_CHANNEL_IX) ? currentChannelEditingIx : recvMsg.channel;
+#else // NO_OSC
+			int pat = recvMsg.pattern;
+			int ch = recvMsg.channel;	
+#endif // NO_OSC			
 			if (copySourcePatternIx > -1 && copySourceChannelIx > -1)
 			{
 				// Clear clipboard 
@@ -1909,6 +1948,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		nextStep = true;
 		lights[RESET_LIGHT].value = 1.0;
 		nextIndex = TROWA_INDEX_UNDEFINED; // Reset our jump to index
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (useOSC && oscInitialized)
 		{
@@ -1920,6 +1960,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 #if TROWA_SEQ_USE_INTERNAL_DIVISOR
 		idleCounter = -1;
 #endif
@@ -1974,7 +2015,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 			if (lights[PATTERN_SEQ_LIGHT_START + patternPlayHeadIx].value < 0.3f)
 				lights[PATTERN_SEQ_LIGHT_START + patternPlayHeadIx].value = 0.9f;
 		} // end internal pattern sequencing		
-
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (useOSC && oscInitialized)
 		{
@@ -1987,6 +2028,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 	} // end if next step
 
 	// // If we were just unpaused and we were reset during the pause, make sure we fire the first step.
@@ -2022,6 +2064,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 
 	// Send messages if needed
 	/// TODO: Make a message sender to do this crap
+#ifndef NO_OSC	
 	oscMutex.lock();
 	if (useOSC && oscInitialized)
 	{
@@ -2253,7 +2296,7 @@ void TSSequencerModuleBase::getStepInputs(const ProcessArgs& args, /*out*/ bool*
 		}
 	} // end send osc
 	oscMutex.unlock();
-
+#endif // NO_OSC
 	firstLoad = false;
 	return;
 } // end getStepInputs()
@@ -2307,6 +2350,7 @@ json_t* TSSequencerModuleBase::dataToJson() {
 	json_t* gateModeJ = json_integer((int)gateMode);
 	json_object_set_new(rootJ, "gateMode", gateModeJ);
 
+#ifndef NO_OSC
 	// OSC Parameters
 	json_t* oscJ = json_object();
 	json_object_set_new(oscJ, "IpAddress", json_string(this->currentOSCSettings.oscTxIpAddress.c_str()));
@@ -2316,6 +2360,7 @@ json_t* TSSequencerModuleBase::dataToJson() {
 	json_object_set_new(oscJ, "AutoReconnectAtLoad", json_boolean(oscReconnectAtLoad)); // [v11, v0.6.3]
 	json_object_set_new(oscJ, "Initialized", json_boolean(oscInitialized)); // [v11, v0.6.3] We know the settings are good at least at the time of save
 	json_object_set_new(rootJ, "osc", oscJ);
+#endif // NO_OSC
 
 	if (allowPatternSequencing)
 	{
@@ -2456,6 +2501,7 @@ void TSSequencerModuleBase::dataFromJson(json_t* rootJ)
 	if (gateModeJ)
 		gateMode = (GateMode)json_integer_value(gateModeJ);
 
+#ifndef NO_OSC		
 	json_t* oscJ = json_object_get(rootJ, "osc");
 	if (oscJ)
 	{
@@ -2483,6 +2529,7 @@ void TSSequencerModuleBase::dataFromJson(json_t* rootJ)
 			}
 		}
 	} // end if osc
+#endif // NO_OSC
 
 	// Pattern Sequencing:
 	if (allowPatternSequencing)

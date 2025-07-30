@@ -13,10 +13,13 @@ using namespace rack;
 /// --> 64 Patterns * 16 Channels...
 
 
-
+#ifndef NO_OSC
 #include <thread> // std::thread
 #include <mutex>
+#endif // NO_OSC
+
 #include <queue>
+
 #include <vector>
 #include <string.h>
 #include <stdio.h>
@@ -25,17 +28,23 @@ using namespace rack;
 #include <chrono>
 #include "TSTempoBPM.hpp"
 #include "TSExternalControlMessage.hpp"
+
+#ifndef NO_OSC
 #include "TSOSCCommon.hpp"
 #include "TSOSCSequencerListener.hpp"
 #include "TSOSCCommunicator.hpp"
 #include "TSOSCSequencerOutputMessages.hpp"
+#endif 
+
 //#include "TSSequencerWidgetBase.hpp"
 #include "TSParamQuantity.hpp"
 
+#ifndef NO_OSC
 #include "../lib/oscpack/osc/OscOutboundPacketStream.h"
 #include "../lib/oscpack/ip/UdpSocket.h"
 #include "../lib/oscpack/osc/OscReceivedElements.h"
 #include "../lib/oscpack/osc/OscPacketListener.h"
+#endif 
 
 #define TROWA_SEQ_NUM_CHNLS		16	// Num of channels/triggers/voices
 #define TROWA_SEQ_NUM_STEPS		16  // Num of steps per channel/gate/voice
@@ -452,6 +461,7 @@ struct TSSequencerModuleBase : Module
 	// The current control mode (i.e. Edit Mode or Play / Performance Mode)
 	ExternalControllerMode currentCtlMode = ExternalControllerMode::EditMode;
 
+#ifndef NO_OSC
 	// OSC Messaging ////////////////
 	// If we allow osc or not.
 	bool allowOSC = true;
@@ -459,6 +469,7 @@ struct TSSequencerModuleBase : Module
 	bool useOSC = true;
 	// An OSC id.
 	int oscId = 0;
+
 	// Mutex for osc messaging.
 	std::mutex oscMutex;
 	// Current OSC IP address and port settings.
@@ -504,6 +515,13 @@ struct TSSequencerModuleBase : Module
 	// The current osc client. Clients such as touchOSC and Lemur are limited and need special treatment.
 	OSCClient oscCurrentClient = OSCClient::GenericClient;
 
+#else
+	bool allowOSC = false;
+	bool useOSC = false;	
+	int oscId = 0;
+	bool oscInitialized = false;
+	bool oscShowConfigurationScreen = false;
+#endif 
 
 	// If it is the first load this session
 	bool firstLoad = true;

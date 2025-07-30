@@ -2,6 +2,7 @@
 
 const char * TROWA_NOTES[TROWA_SEQ_NUM_NOTES] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
+#ifndef NO_OSC
 // Split a string
 std::vector<std::string> str_split(const std::string& s, char delimiter)
 {
@@ -14,6 +15,7 @@ std::vector<std::string> str_split(const std::string& s, char delimiter)
 	}
 	return tokens;
 }
+#endif // NO_OSC
 
 
 namespace trowaSoft

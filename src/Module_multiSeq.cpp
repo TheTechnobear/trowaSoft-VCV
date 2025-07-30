@@ -206,6 +206,7 @@ float multiSeq::getPlayingStepValue(int step, int pattern)
 void multiSeq::setStepValue(int step, float val, int channel, int pattern)
 {
 	int r, c;
+#ifndef NO_OSC
 	if (channel == CURRENT_EDIT_CHANNEL_IX)
 	{
 		channel = currentChannelEditingIx;
@@ -214,6 +215,8 @@ void multiSeq::setStepValue(int step, float val, int channel, int pattern)
 	{
 		pattern = currentPatternEditingIx;
 	}
+#endif // NO_OSC
+
 	triggerState[pattern][channel][step] = val;
 	r = step / this->numCols;
 	c = step % this->numCols;
@@ -239,6 +242,7 @@ void multiSeq::setStepValue(int step, float val, int channel, int pattern)
 				gateTriggers[step].state = TriggerSignal::LOW;
 		}
 	}
+#ifndef NO_OSC	
 	oscMutex.lock();
 	if (useOSC && oscInitialized)
 	{
@@ -268,6 +272,7 @@ void multiSeq::setStepValue(int step, float val, int channel, int pattern)
 		oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 	}
 	oscMutex.unlock();
+#endif // NO_OSC
 
 	// Set our knobs
 	if (pattern == currentPatternEditingIx && channel == currentChannelEditingIx)
@@ -462,10 +467,16 @@ void multiSeq::process(const ProcessArgs &args)
 	char valOutputBuffer[20] = { 0 };
 	char addrBuff[TROWA_SEQ_BUFF_SIZE] = { 0 };
 	char colorAddrBuff[TROWA_SEQ_BUFF_SIZE] = { 0 }; // 2nd buffer to remove my lazy re-using of buffers (technically undefined behavior)
+
+#ifndef NO_OSC
 	std::string stepStringAddr = std::string(oscAddrBuffer[SeqOSCOutputMsg::EditStepString]);
+#endif // NO_OSC
+
 	if (!valuesChanging && (reloadMatrix || reloadEditMatrix || valueModeChanged))
 	{
 		reloadEditMatrix = false;
+
+#ifndef NO_OSC
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -476,6 +487,8 @@ void multiSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
+
 		// Load this channel into our 4x4 matrix
 		this->currentStepMatrixColor = voiceColors[currentChannelEditingIx];
 		for (int s = 0; s < maxSteps; s++) 
@@ -485,6 +498,8 @@ void multiSeq::process(const ProcessArgs &args)
 			gateLights[r][c] = 1.0 - stepLights[r][c];			
 			this->params[CHANNEL_PARAM + s].setValue(this->triggerState[currentPatternEditingIx][currentChannelEditingIx][s]);
 			lights[PAD_LIGHTS + s].value = gateLights[r][c];
+
+#ifndef NO_OSC
 			oscMutex.lock();
 			if (sendOSC && oscInitialized)
 			{
@@ -526,7 +541,9 @@ void multiSeq::process(const ProcessArgs &args)
 					<< osc::EndMessage;
 			}
 			oscMutex.unlock();
+#endif // NO_OSC
 		} // end for
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (sendOSC && oscInitialized)
 		{
@@ -544,10 +561,12 @@ void multiSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif  //NO_OSC
 	} // end if reload edit matrix
 	//-- * Read the buttons
 	else if (!valuesChanging) // Only read in if another thread isn't changing the values
 	{		
+#ifndef NO_OSC
 		oscMutex.lock();
 		osc::OutboundPacketStream oscStream(oscBuffer, OSC_OUTPUT_BUFFER_SIZE);
 		if (sendOSC && oscInitialized)
@@ -555,6 +574,7 @@ void multiSeq::process(const ProcessArgs &args)
 			oscStream << osc::BeginBundleImmediate;
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 
 		int numChanged = 0;
 		const float threshold = TROWA_MULTISEQ_KNOB_CHANGED_THRESHOLD;
@@ -571,6 +591,7 @@ void multiSeq::process(const ProcessArgs &args)
 			gateLights[r][c] = stepLights[r][c];
 			lights[PAD_LIGHTS + s].value = gateLights[r][c];	
 
+#ifndef NO_OSC			
 			oscMutex.lock();
 			// This step has changed and we are doing OSC
 			if (sendLightVal && oscInitialized)
@@ -599,7 +620,9 @@ void multiSeq::process(const ProcessArgs &args)
 				numChanged++;
 			} // end if send the value over OSC
 			oscMutex.unlock();
+#endif // NO_OSC			
 		} // end loop through step buttons
+#ifndef NO_OSC
 		oscMutex.lock();
 		if (sendOSC && oscInitialized && numChanged > 0)
 		{
@@ -607,6 +630,7 @@ void multiSeq::process(const ProcessArgs &args)
 			oscTxSocket->Send(oscStream.Data(), oscStream.Size());
 		}
 		oscMutex.unlock();
+#endif // NO_OSC
 	} // end else (read button matrix)
 	
 	// Set Outputs (16 triggers)	
@@ -644,10 +668,10 @@ void multiSeq::process(const ProcessArgs &args)
 		}		
 		//float gate = (running && gOn) ? chMode->GetOutputValue( triggerState[currentPatternPlayingIx][g][index], pulse ) : 0.0; //***********VOLTAGE OUTPUT				
 		
-		outputs[CHANNELS_OUTPUT + g].value= gate;
+		outputs[CHANNELS_OUTPUT + g].setVoltage(gate);
 		// Output lights (around output jacks for each gate/trigger):
 		gateLightsOut[g] = (gate < 0) ? -gate : gate;
-		lights[CHANNEL_LIGHTS + g].value = gate / chMode->outputVoltageMax;// currOutputValueMode->outputVoltageMax;
+		lights[CHANNEL_LIGHTS + g].setBrightness(gate / chMode->outputVoltageMax);// currOutputValueMode->outputVoltageMax;
 	}
 	return;
 } // end process()
@@ -685,6 +709,7 @@ multiSeqWidget::multiSeqWidget(multiSeq* seqModule, int nSteps, int nRows, int n
 	//////////////////////////////////////////////
 	// Background
 	//////////////////////////////////////////////
+	// If this is a preview, we don't have a module, so we need to create
 	{
 		SvgPanel *panel = new SvgPanel();
 		panel->box.size = box.size;

@@ -8,7 +8,10 @@ using namespace rack;
 #include "trowaSoftUtilities.hpp"
 #include "TSSequencerModuleBase.hpp"
 #include "TSSequencerWidgetBase.hpp"
+
+#ifndef NO_OSC
 #include "TSOSCConfigWidget.hpp"
+#endif // NO_OSC
 
 #define SEQ_PORT_IN_WIDGET		TS_DEFAULT_PORT_INPUT		// The port widget to use
 #define SEQ_PORT_OUT_WIDGET		TS_DEFAULT_PORT_OUTPUT		// The port widget to use
@@ -53,6 +56,7 @@ void TSSequencerWidgetBase::addBaseControls(bool addGridLines)
 	////////////////////////////////////
 	if (!isPreview)
 	{		
+#ifndef NO_OSC
 		TSOSCConfigWidget* oscConfig = new TSOSCConfigWidget(thisModule, TSSequencerModuleBase::ParamIds::OSC_SAVE_CONF_PARAM, TSSequencerModuleBase::ParamIds::OSC_AUTO_RECONNECT_PARAM,
 			thisModule->oscCurrentClient,
 			thisModule->currentOSCSettings.oscTxIpAddress.c_str(), thisModule->currentOSCSettings.oscTxPort, thisModule->currentOSCSettings.oscRxPort);
@@ -60,7 +64,9 @@ void TSSequencerWidgetBase::addBaseControls(bool addGridLines)
 		oscConfig->box.pos = display->box.pos;
 		oscConfig->box.size = display->box.size;
 		this->oscConfigurationScreen = oscConfig;
+
 		addChild(oscConfig);
+#endif // NO_OSC
 	}
 	
 	////////////////////////////////////
@@ -218,7 +224,11 @@ void TSSequencerWidgetBase::addBaseControls(bool addGridLines)
 		btn->setSize(ledBtnSize);
 		addParam(btn);
 		addChild(TS_createColorValueLight<ColorValueLight>(Vec(x + xLightOffset, y + yLightOffset), module, TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT, ledSize, TSColors::COLOR_WHITE));
+#ifndef NO_OSC
 		addChild(TS_createColorValueLight<ColorValueLight>(Vec(x + xLightOffset + 2, y + yLightOffset + 2), module, TSSequencerModuleBase::LightIds::OSC_ENABLED_LIGHT, Vec(ledSize.x - 4, ledSize.y - 4), TSOSC_STATUS_COLOR));
+#else
+		addChild(TS_createColorValueLight<ColorValueLight>(Vec(x + xLightOffset + 2, y + yLightOffset + 2), module, TSSequencerModuleBase::LightIds::OSC_ENABLED_LIGHT, Vec(ledSize.x - 4, ledSize.y - 4), TSColors::COLOR_RED));
+#endif 
 	}
 	
 	
@@ -308,7 +318,7 @@ void TSSequencerWidgetBase::addBaseControls(bool addGridLines)
 			// Triggers / Gates / Output:
 			addOutput(TS_createOutput<SEQ_PORT_OUT_WIDGET>(Vec(x, y), thisModule, TSSequencerModuleBase::OutputIds::CHANNELS_OUTPUT+v, /*color*/ channelColors[v]));
 			if (!isPreview)
-				thisModule->lights[TSSequencerModuleBase::LightIds::CHANNEL_LIGHTS + v].value = 0;
+				thisModule->lights[TSSequencerModuleBase::LightIds::CHANNEL_LIGHTS + v].setBrightness(0);
 			x += 36;
 			v++;
 		} // end for
@@ -376,8 +386,10 @@ void TSSequencerWidgetBase::step()
 					pattSeqConfigurationScreen->ckEnabled->checked = thisModule->patternSequencingOn;
 					// Hide OSC Config				
 					thisModule->oscShowConfigurationScreen = false;
-					this->oscConfigurationScreen->setVisible(false);
-					thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = 0.0f;				
+#ifndef NO_OSC
+						this->oscConfigurationScreen->setVisible(false);
+#endif // NO_OSC
+					thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].setBrightness(0.0f);
 				}
 				else
 				{
@@ -392,10 +404,11 @@ void TSSequencerWidgetBase::step()
 	//------------------------------------
 	// OSC
 	//------------------------------------	
+#ifndef NO_OSC
 	if (thisModule->oscConfigTrigger.process(thisModule->params[TSSequencerModuleBase::ParamIds::OSC_SHOW_CONF_PARAM].getValue()))
 	{
 		thisModule->oscShowConfigurationScreen = !thisModule->oscShowConfigurationScreen;
-		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = (thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0;
+		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].setBrightness((thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0);
 		this->oscConfigurationScreen->setVisible(thisModule->oscShowConfigurationScreen);
 		this->display->showDisplay = !thisModule->oscShowConfigurationScreen;
 		if (thisModule->oscShowConfigurationScreen)
@@ -518,7 +531,7 @@ void TSSequencerWidgetBase::step()
 			this->oscConfigurationScreen->btnActionEnable = true;
 		}
 	} // end if show OSC config screen
-
+#endif // NO_OSC
 	ModuleWidget::step();
 	return;
 } // end step()

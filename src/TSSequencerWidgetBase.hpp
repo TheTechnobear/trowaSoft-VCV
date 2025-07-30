@@ -1,12 +1,21 @@
 #ifndef TROWASOFT_MODULE_TSSEQUENCERWIDGETBASE_HPP
 #define TROWASOFT_MODULE_TSSEQUENCERWIDGETBASE_HPP
+
+#ifndef NO_OSC
 #include <exception>
+#endif // NO_OSC
+
 #include <rack.hpp>
 using namespace rack;
 
+
 #include "TSSequencerModuleBase.hpp"
 #include "TSSModuleWidgetBase.hpp"
+
+#ifndef NO_OSC
 #include "TSOSCConfigWidget.hpp"
+#endif // NO_OSC
+
 #include "TSColors.hpp"
 
 struct TSSeqDisplay;
@@ -28,7 +37,12 @@ struct TSSequencerWidgetBase : TSSModuleWidgetBase {
 	// The labels.
 	TSSeqLabelArea* labelArea;
 	// OSC configuration widget.
+#ifndef NO_OSC
 	TSOSCConfigWidget* oscConfigurationScreen;
+#else
+	void* oscConfigurationScreen = NULL;
+#endif // NO_OSC
+
 	// Pattern sequencer config widget.
 	TSSeqPatternSeqConfigWidget* pattSeqConfigurationScreen = NULL;
 	// Numer of steps this should have (for when we get a NULL module).
@@ -85,8 +99,10 @@ struct TSSequencerWidgetBase : TSSModuleWidgetBase {
 		if (e.action == GLFW_PRESS || e.action == GLFW_REPEAT) {
 			if ((e.mods & RACK_MOD_MASK) == RACK_MOD_CTRL && (e.key == GLFW_KEY_C || e.key == GLFW_KEY_V))
 			{
+#ifndef METAMODULE
 				// Let children have a chance
 				this->OpaqueWidget::onHoverKey(e);
+#endif // METAMODULE
 			}
 		}
 		if (!e.isConsumed()) {
