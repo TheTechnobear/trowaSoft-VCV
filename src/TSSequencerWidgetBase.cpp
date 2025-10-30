@@ -408,7 +408,7 @@ void TSSequencerWidgetBase::step()
 	if (thisModule->oscConfigTrigger.process(thisModule->params[TSSequencerModuleBase::ParamIds::OSC_SHOW_CONF_PARAM].getValue()))
 	{
 		thisModule->oscShowConfigurationScreen = !thisModule->oscShowConfigurationScreen;
-		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = (thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0);
+		thisModule->lights[TSSequencerModuleBase::LightIds::OSC_CONFIGURE_LIGHT].value = (thisModule->oscShowConfigurationScreen) ? 1.0 : 0.0;
 		this->oscConfigurationScreen->setVisible(thisModule->oscShowConfigurationScreen);
 		this->display->showDisplay = !thisModule->oscShowConfigurationScreen;
 		if (thisModule->oscShowConfigurationScreen)
